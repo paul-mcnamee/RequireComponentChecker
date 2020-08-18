@@ -10,18 +10,37 @@ namespace FourthMouse.Tools
     public class RequireComponentChecker
     {
         private static ActionToTake action;
+        private static List<GameObject> gameObjects;
 
-        [MenuItem("Tools/RequireComponent Checker/Add Missing %#g")]
-        private static void AddMissingComponents()
+        [MenuItem("Tools/RequireComponent Checker/Add Missing -- Check Assets %#g")]
+        private static void AddMissingComponentsFromAssets()
         {
             action = new ActionToTake(AddMissing);
+            gameObjects = GetEditableGameObjectsFromAssets();
             ActOnMissingComponents();
         }
 
-        [MenuItem("Tools/RequireComponent Checker/Log %#l")]
-        private static void LogMissingComponents()
+        [MenuItem("Tools/RequireComponent Checker/Add Missing -- Check Loaded Components")]
+        private static void AddMissingComponentsFromMemory()
+        {
+            action = new ActionToTake(AddMissing);
+            gameObjects = GetEditableGameObjectsFromMemory();
+            ActOnMissingComponents();
+        }
+
+        [MenuItem("Tools/RequireComponent Checker/Log -- Check Assets")]
+        private static void LogMissingComponentsFromAssets()
         {
             action = new ActionToTake(LogMissing);
+            gameObjects = GetEditableGameObjectsFromAssets();
+            ActOnMissingComponents();
+        }
+
+        [MenuItem("Tools/RequireComponent Checker/Log -- Check Loaded Components")]
+        private static void LogMissingComponentsFromMemory()
+        {
+            action = new ActionToTake(LogMissing);
+            gameObjects = GetEditableGameObjectsFromMemory();
             ActOnMissingComponents();
         }
 
@@ -36,7 +55,14 @@ namespace FourthMouse.Tools
             Debug.Log($"{go.name} now has a component of type {t.Name}.");
         }
 
-        private static List<GameObject> GetEditableGameObjects()
+        private static bool ValidEditableGameObject(GameObject go)
+        {
+            return go != null
+                && go.transform.root.gameObject != null
+                && go.hideFlags == HideFlags.None;
+        }
+
+        private static List<GameObject> GetEditableGameObjectsFromAssets()
         {
             var guids = AssetDatabase.FindAssets("t:GameObject");
             var editableObjects = new List<GameObject>();
@@ -44,9 +70,7 @@ namespace FourthMouse.Tools
             {
                 var component = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(guid), typeof(GameObject));
                 var go = component as GameObject;
-                if (go != null
-                    && go.transform.root.gameObject != null
-                    && go.hideFlags == HideFlags.None)
+                if (ValidEditableGameObject(go))
                 {
                     editableObjects.Add(go);
                 }
@@ -55,12 +79,25 @@ namespace FourthMouse.Tools
             return editableObjects;
         }
 
+        private static List<GameObject> GetEditableGameObjectsFromMemory()
+        {
+            var editableObjects = new List<GameObject>();
+
+            // This checks objects that may be in the scenes loaded in memory, but not necessarily added as an asset of the project yet.
+            (Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
+                .ToList<GameObject>()
+                .Where(go => ValidEditableGameObject(go) && !editableObjects.Contains(go))
+                .ToList<GameObject>()
+                .ForEach(go => editableObjects.Add(go));
+
+            return editableObjects;
+        }
+
         private static void ActOnMissingComponents()
         {
-            List<GameObject> editableObjects = GetEditableGameObjects();
-            Debug.Log($"Found {editableObjects.Count} objects.");
+            Debug.Log($"Found {gameObjects.Count} objects.");
 
-            editableObjects.ForEach(go =>
+            gameObjects.ForEach(go =>
             {
                 var components = go.GetComponents(typeof(Component));
                 for (var childIndedx = 0; childIndedx < components.Length; childIndedx++)
