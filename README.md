@@ -11,6 +11,8 @@ https://docs.unity3d.com/ScriptReference/RequireComponent.html
 
 ## Usage
 
+In most cases, you would likely want to run the tool on the assets first, and then any additional loaded components that were not yet added as assets.
+
 ### Tools -> RequireComponent Checker -> Add Missing -- Check Assets (ctrl + shift + g)
 
 Checks all "asset" GameObjects in the project using the AssetDatabase and adds any missing components denoted by the RequireComponent attribute.
