@@ -32,24 +32,33 @@ namespace FourthMouse.Tools
 
         private static void AddMissing(GameObject go, System.Type t)
         {
-            go.AddComponent(t);
+            Undo.AddComponent(go, t);
             Debug.Log($"{go.name} now has a component of type {t.Name}.");
         }
 
         private static List<GameObject> GetEditableGameObjects()
         {
-            var gameObjects = Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[];
-            var editableObjects = gameObjects.ToList<GameObject>()
-                .Where(go => go != null
+            var guids = AssetDatabase.FindAssets("t:GameObject");
+            var editableObjects = new List<GameObject>();
+            foreach (string guid in guids)
+            {
+                var component = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(guid), typeof(GameObject));
+                var go = component as GameObject;
+                if (go != null
                     && go.transform.root.gameObject != null
-                    && (!(go.hideFlags == HideFlags.NotEditable || go.hideFlags == HideFlags.HideAndDontSave)))
-                .ToList();
+                    && go.hideFlags == HideFlags.None)
+                {
+                    editableObjects.Add(go);
+                }
+            }
+
             return editableObjects;
         }
 
         private static void ActOnMissingComponents()
         {
             List<GameObject> editableObjects = GetEditableGameObjects();
+            Debug.Log($"Found {editableObjects.Count} objects.");
 
             editableObjects.ForEach(go =>
             {
